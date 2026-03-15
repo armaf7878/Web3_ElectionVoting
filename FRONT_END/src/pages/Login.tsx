@@ -9,22 +9,24 @@ import { useWeb3 } from '../hooks/useWeb3';
 import { APP_NAME } from '../utils/constants';
 export function Login() {
   const { t } = useTranslation(['auth', 'common']);
-  const { isConnected } = useWeb3();
+  const { isConnected, address, privateKey } = useWeb3();
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as any)?.from || '/dashboard';
   useEffect(() => {
-    if (isConnected && !isLoading) {
+    if (isConnected && address && privateKey && !isLoading) {
       const performLogin = async () => {
-        await login();
-        navigate(from, {
-          replace: true
-        });
+        try {
+          await login(address, privateKey);
+          navigate(from, { replace: true });
+        } catch (error) {
+          console.error("Login component error:", error);
+        }
       };
       performLogin();
     }
-  }, [isConnected, login, navigate, from, isLoading]);
+  }, [isConnected, address, privateKey, login, navigate, from, isLoading]);
   return (
     <div className="min-h-screen bg-[#0A0A0F] font-genos flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
       <div

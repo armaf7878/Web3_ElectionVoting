@@ -1,54 +1,80 @@
 import React, { useEffect, useState, createContext } from 'react';
 import { toast } from 'sonner';
+
+import { ethers } from 'ethers';
+
 interface Web3ContextType {
   isConnected: boolean;
   address: string | null;
   balance: string | null;
   network: string;
   isConnecting: boolean;
-  connectWallet: () => Promise<void>;
+  privateKey: string | null;
+  connectWallet: (pk: string) => Promise<void>;
   disconnectWallet: () => void;
 }
+
 export const Web3Context = createContext<Web3ContextType | undefined>(undefined);
-export function Web3Provider({ children }: {children: ReactNode;}) {
+
+export function Web3Provider({ children }: {children: React.ReactNode;}) {
   const [isConnected, setIsConnected] = useState(false);
   const [address, setAddress] = useState<string | null>(null);
   const [balance, setBalance] = useState<string | null>(null);
-  const [network, setNetwork] = useState('Ethereum Mainnet');
+  const network = 'Ethereum Network';
   const [isConnecting, setIsConnecting] = useState(false);
-  // Check if previously connected
+  const [privateKey, setPrivateKey] = useState<string | null>(null);
+
+  // Check if previously connected - uses sessionStorage for per-tab isolation
   useEffect(() => {
-    const storedWallet = localStorage.getItem('votechain_wallet');
-    if (storedWallet) {
+    const storedWallet = sessionStorage.getItem('votechain_wallet');
+    const storedPk = sessionStorage.getItem('votechain_pk');
+    if (storedWallet && storedPk) {
       setIsConnected(true);
       setAddress(storedWallet);
-      setBalance('2.45 ETH');
+      setPrivateKey(storedPk);
     }
   }, []);
-  const connectWallet = async () => {
+
+  const connectWallet = async (pk: string) => {
     setIsConnecting(true);
     try {
-      // Simulate wallet connection delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const mockAddress = '0x7a3B2c1D9e8F4a5B6c7D8e9F0a1B2c3D4e5F6a7B';
+      if (!pk) {
+        throw new Error('Please enter a valid private key.');
+      }
+
+      console.log('[Web3Context] Connecting via manual Private Key...');
+      const wallet = new ethers.Wallet(pk);
+      const userAddress = wallet.address;
+      
+      console.log('[Web3Context] Đã kết nối với địa chỉ ví:', userAddress);
+
       setIsConnected(true);
-      setAddress(mockAddress);
-      setBalance('2.45 ETH');
-      localStorage.setItem('votechain_wallet', mockAddress);
-      toast.success('Wallet connected successfully');
-    } catch (error) {
-      toast.error('Failed to connect wallet');
+      setAddress(userAddress);
+      setPrivateKey(pk);
+
+      sessionStorage.setItem('votechain_wallet', userAddress);
+      sessionStorage.setItem('votechain_pk', pk);
+      toast.success('Wallet connected successfully via Private Key');
+    } catch (error: any) {
+      console.error('[Web3Context Error]', error);
+      toast.error(error.message || 'Failed to connect wallet');
     } finally {
       setIsConnecting(false);
     }
   };
+
   const disconnectWallet = () => {
-    setIsConnected(false);
-    setAddress(null);
-    setBalance(null);
-    localStorage.removeItem('votechain_wallet');
-    toast.info('Wallet disconnected');
+    if (isConnected) {
+      setIsConnected(false);
+      setAddress(null);
+      setBalance(null);
+      setPrivateKey(null);
+      sessionStorage.removeItem('votechain_wallet');
+      sessionStorage.removeItem('votechain_pk');
+      toast.info('Wallet disconnected');
+    }
   };
+
   return (
     <Web3Context.Provider
       value={{
@@ -57,11 +83,11 @@ export function Web3Provider({ children }: {children: ReactNode;}) {
         balance,
         network,
         isConnecting,
+        privateKey,
         connectWallet,
         disconnectWallet
       }}>
-      
       {children}
-    </Web3Context.Provider>);
-
+    </Web3Context.Provider>
+  );
 }

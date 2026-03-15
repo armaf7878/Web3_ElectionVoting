@@ -17,12 +17,27 @@ const Organization = new mongoose.Schema({
         unique: true
     },
 
+    description: {
+        type: String
+    },
+
+    memberLimit: {
+        type: Number,
+        default: 1000
+    },
+
+    approvalType: {
+        type: String,
+        enum: ["manual", "auto"],
+        default: "manual"
+    },
+
     members: [
         {
             walletAddress: String,
             status: {
                 type: String,
-                enum: ["pending", "approved"],
+                enum: ["pending", "approved", "rejected"],
                 default: "pending"
             }
         }

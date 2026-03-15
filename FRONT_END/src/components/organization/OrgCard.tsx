@@ -1,8 +1,8 @@
-import React from 'react';
+
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { UsersIcon, VoteIcon, ShieldCheckIcon } from 'lucide-react';
+import { UsersIcon, VoteIcon, ShieldCheckIcon, ClockIcon } from 'lucide-react';
 import { Card } from '../common/Card';
 import { Button } from '../common/Button';
 import { truncateAddress } from '../../utils/helpers';
@@ -15,6 +15,7 @@ interface OrgCardProps {
     activeElections: number;
     owner: string;
     joined: boolean;
+    pending?: boolean;
   };
   onJoin?: (id: string) => void;
 }
@@ -42,12 +43,18 @@ export function OrgCard({ org, onJoin }: OrgCardProps) {
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
             {org.name.charAt(0)}
           </div>
-          {org.joined &&
+          {org.joined && (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
               <ShieldCheckIcon className="w-3 h-3 mr-1" />
               {t('member')}
             </span>
-          }
+          )}
+          {!org.joined && org.pending && (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400">
+              <ClockIcon className="w-3 h-3 mr-1" />
+              {t('pendingRequest')}
+            </span>
+          )}
         </div>
 
         <h3 className="text-xl font-bold text-white mb-2 line-clamp-1">
@@ -86,13 +93,18 @@ export function OrgCard({ org, onJoin }: OrgCardProps) {
             </span>
           </div>
 
-          {org.joined ?
+          {org.joined ? (
           <Link to={`/organizations/${org.id}`}>
               <Button variant="outline" size="sm">
                 {t('viewDetails')}
               </Button>
-            </Link> :
-
+            </Link>
+          ) : org.pending ? (
+            <Button variant="ghost" size="sm" disabled>
+              <ClockIcon className="w-3 h-3 mr-1" />
+              {t('pendingRequest')}
+            </Button>
+          ) : (
           <Button
             variant="primary"
             size="sm"
@@ -100,7 +112,7 @@ export function OrgCard({ org, onJoin }: OrgCardProps) {
             
               {t('join')}
             </Button>
-          }
+          )}
         </div>
       </Card>
     </motion.div>);

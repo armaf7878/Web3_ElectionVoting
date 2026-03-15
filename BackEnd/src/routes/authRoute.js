@@ -4,6 +4,7 @@ const authController = require('../app/controller/authController');
 const authMiddle = require('../app/midleware/authMiddleware');
 
 router.get('/profile', authMiddle, authController.getProfile);
+router.put('/profile', authMiddle, authController.updateProfile);
 router.post('/verify-signature', authController.verifySignature);
 router.post('/request-message', authController.requestMessage);
 router.post('/getSignature', authController.getSign);

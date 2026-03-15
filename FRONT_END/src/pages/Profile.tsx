@@ -21,9 +21,10 @@ import { OrgCard } from '../components/organization/OrgCard';
 import { toast } from 'sonner';
 export function Profile() {
   const { t, i18n } = useTranslation(['profile', 'common']);
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { address, isConnected } = useWeb3();
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'organizations' | 'history'>(
     'organizations'
   );
@@ -39,10 +40,22 @@ export function Profile() {
       toast.success(t('profile:walletCopied'));
     }
   };
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsEditing(false);
-    toast.success(t('profile:profileUpdated'));
+    if (!formData.name.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await updateProfile(formData.name, formData.email);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Profile update failed:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   return (
     <div className="max-w-5xl mx-auto space-y-8 font-genos">
@@ -243,7 +256,7 @@ export function Profile() {
                   icon={<MailIcon className="w-5 h-5" />} />
                 
                   <div className="pt-4 flex justify-end">
-                    <Button type="submit" variant="primary">
+                    <Button type="submit" variant="primary" loading={isSubmitting}>
                       {t('profile:saveChanges')}
                     </Button>
                   </div>

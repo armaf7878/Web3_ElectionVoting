@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { WalletIcon, CheckCircle2Icon, AlertCircleIcon } from 'lucide-react';
 import { useWeb3 } from '../../hooks/useWeb3';
 import { Button } from '../common/Button';
 import { truncateAddress } from '../../utils/helpers';
+
 export function WalletConnect() {
   const { t } = useTranslation(['auth', 'common']);
+  const [pkInput, setPkInput] = useState('');
   const {
     isConnected,
     address,
@@ -14,6 +16,7 @@ export function WalletConnect() {
     connectWallet,
     disconnectWallet
   } = useWeb3();
+
   return (
     <div className="bg-[#111118]/90 rounded-2xl shadow-2xl shadow-red-500/5 border border-red-500/10 p-8 text-center max-w-md w-full mx-auto font-genos">
       <div className="mb-6 relative">
@@ -30,7 +33,7 @@ export function WalletConnect() {
       <p className="text-gray-400 mb-8">
         {isConnected ?
         t('auth:login.walletConnectedDesc') :
-        t('auth:login.walletNotConnectedDesc')}
+        'Please enter your Private Key to sign in (Testnet only).'}
       </p>
 
       {isConnected ?
@@ -61,26 +64,34 @@ export function WalletConnect() {
         </motion.div> :
 
       <div className="space-y-4">
+          <input 
+            type="password"
+            placeholder="Enter Private Key (e.g. 0x...)"
+            value={pkInput}
+            onChange={(e) => setPkInput(e.target.value)}
+            className="w-full bg-[#0A0A0F] border border-red-500/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-red-500/50 transition-colors"
+          />
           <Button
           variant="primary"
           fullWidth
           size="lg"
-          onClick={connectWallet}
+          onClick={() => connectWallet(pkInput)}
           loading={isConnecting}
+          disabled={!pkInput.trim()}
           className="relative overflow-hidden group">
           
             <span className="relative z-10">
-              {t('auth:login.connectMetaMask')}
+              Connect with Private Key
             </span>
             <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]" />
           </Button>
 
           <div className="flex items-center justify-center text-sm text-gray-500 mt-4">
             <AlertCircleIcon className="w-4 h-4 mr-1" />
-            <span>{t('auth:login.ethereumMainnet')}</span>
+            <span>Never share your private key on Mainnet!</span>
           </div>
         </div>
       }
-    </div>);
-
+    </div>
+  );
 }

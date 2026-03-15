@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -10,24 +10,114 @@ import {
   ShieldCheckIcon,
   PlusIcon } from
 'lucide-react';
-import { MOCK_ORGS, MOCK_ELECTIONS } from '../../utils/constants';
 import { truncateAddress } from '../../utils/helpers';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { ElectionCard } from '../../components/election/ElectionCard';
+import { useAuth } from '../../hooks/useAuth';
+import { useWeb3 } from '../../hooks/useWeb3';
+import { useEffect } from 'react';
+import { api } from '../../api';
 import { toast } from 'sonner';
+
+interface Member {
+  walletAddress: string;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
+interface Organization {
+  _id: string;
+  name: string;
+  description: string;
+  code: string;
+  owner: string;
+  members: Member[];
+}
 export function OrgDetail() {
   const { t } = useTranslation(['organization', 'common']);
+  const { user } = useAuth();
+  const { address: web3Address } = useWeb3();
   const { id } = useParams();
-  const [activeTab, setActiveTab] = useState<
-    'overview' | 'members' | 'elections' | 'settings'>(
-    'overview');
-  const org = MOCK_ORGS.find((o) => o.id === id) || MOCK_ORGS[0];
-  const orgElections = MOCK_ELECTIONS.filter((e) => e.orgId === org.id);
-  const isOwner = org.owner === '0x7a3B...4f2E';
+  
+  const [org, setOrg] = useState<Organization | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'elections' | 'settings'>('overview');
+
+  const fetchOrgDetail = async () => {
+    setIsLoading(true);
+    try {
+      const response = await api.get(`/organizations/organizations/${id}`);
+      setOrg(response.data);
+    } catch (error: any) {
+      console.error('Failed to fetch org detail:', error);
+      toast.error(t('common:errorOccurred'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id) fetchOrgDetail();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div>
+      </div>
+    );
+  }
+
+  if (!org) {
+    return (
+      <div className="text-center py-20">
+        <h2 className="text-2xl font-bold text-white mb-4">Organization Not Found</h2>
+        <Link to="/organizations">
+          <Button variant="outline">Back to Organizations</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Election data remains mock for now as requested task focuses on members
+  const orgElections: any[] = []; 
+  
+  const currentUserAddress = user?.walletAddress || web3Address;
+  const isOwner = !!currentUserAddress && !!org?.owner && 
+                  currentUserAddress.toLowerCase() === org.owner.toLowerCase();
+
+  const approvedMembers = org.members.filter(m => m.status === 'approved');
+  const pendingRequests = org.members.filter(m => m.status === 'pending');
+
   const copyCode = () => {
-    navigator.clipboard.writeText(org.code);
+    navigator.clipboard.writeText(org.code || '');
     toast.success(t('organization:inviteCodeCopied'));
+  };
+
+  const handleApproveMember = async (walletAddress: string) => {
+    try {
+      await api.post('/organizations/organizations/approve', {
+         organizationId: org._id,
+         walletAddress
+      });
+      toast.success(t('organization:approveSuccess') || 'Member approved');
+      fetchOrgDetail();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to approve');
+    }
+  };
+
+  const handleRejectMember = async (walletAddress: string) => {
+    try {
+      await api.post('/organizations/organizations/reject', {
+         organizationId: org._id,
+         walletAddress
+      });
+      toast.success(t('organization:rejectSuccess') || 'Member rejected');
+      fetchOrgDetail();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to reject');
+    }
   };
   function BuildingIcon(props: any) {
     return (
@@ -239,7 +329,7 @@ export function OrgDetail() {
                           {t('organization:totalMembers')}
                         </span>
                         <span className="font-bold text-white">
-                          {org.memberCount.toLocaleString()}
+                          {approvedMembers.length.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between items-center pb-4 border-b border-[#1A1A24]">
@@ -250,7 +340,7 @@ export function OrgDetail() {
                         })}
                         </span>
                         <span className="font-bold text-white">
-                          {org.activeElections}
+                          0
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
@@ -287,98 +377,103 @@ export function OrgDetail() {
               </div>
             }
 
-            {activeTab === 'members' &&
-            <Card className="overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-[#1A1A24]">
-                    <thead className="bg-[#0A0A0F]">
-                      <tr>
-                        <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        
-                          {t('organization:memberTable.member')}
-                        </th>
-                        <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        
-                          {t('organization:memberTable.address')}
-                        </th>
-                        <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        
-                          {t('organization:memberTable.role')}
-                        </th>
-                        <th
-                        scope="col"
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        
-                          {t('organization:memberTable.status')}
-                        </th>
-                        {isOwner &&
-                      <th scope="col" className="relative px-6 py-3">
-                            <span className="sr-only">
-                              {t('common:actions')}
-                            </span>
-                          </th>
-                      }
-                      </tr>
-                    </thead>
-                    <tbody className="bg-[#111118] divide-y divide-[#1A1A24]">
-                      {[1, 2, 3, 4, 5].map((_, idx) =>
-                    <tr
-                      key={idx}
-                      className="hover:bg-white/5 transition-colors">
-                      
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-red-400 to-red-500 flex items-center justify-center text-white font-bold text-xs">
-                                {idx === 0 ? 'O' : 'M'}
-                              </div>
-                              <div className="ml-3">
-                                <div className="text-sm font-medium text-gray-300">
-                                  User {idx + 1}
+            {activeTab === 'members' && 
+            <div className="space-y-6">
+                {isOwner && pendingRequests.length > 0 && (
+                  <Card className="overflow-hidden border-yellow-500/20">
+                    <div className="px-6 py-4 bg-yellow-500/5 border-b border-[#1A1A24]">
+                        <h3 className="text-lg font-bold text-yellow-500 flex items-center">
+                            <PlusIcon className="w-4 h-4 mr-2" />
+                            {t('organization:pendingRequests')}
+                        </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-[#1A1A24]">
+                        <tbody className="bg-[#111118] divide-y divide-[#1A1A24]">
+                          {pendingRequests.map((req, idx) => (
+                            <tr key={idx} className="hover:bg-white/5 transition-colors">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-mono text-gray-300">
+                                  {req.walletAddress}
                                 </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-mono text-gray-500">
-                              0x{Math.random().toString(16).substr(2, 8)}...
-                              {Math.random().toString(16).substr(2, 4)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${idx === 0 ? 'bg-purple-500/20 text-purple-400' : 'bg-[#1A1A24] text-gray-300'}`}>
-                          
-                              {idx === 0 ?
-                          t('common:owner') :
-                          t('common:voter')}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-500/20 text-green-400">
-                              {t('common:active')}
-                            </span>
-                          </td>
-                          {isOwner &&
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              {idx !== 0 &&
-                        <button className="text-red-400 hover:text-red-300">
-                                  {t('common:remove')}
-                                </button>
-                        }
-                            </td>
-                      }
-                        </tr>
-                    )}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
+                                <Button 
+                                  variant="primary" 
+                                  size="sm" 
+                                  onClick={() => handleApproveMember(req.walletAddress)}
+                                >
+                                  {t('common:approve')}
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => handleRejectMember(req.walletAddress)}
+                                >
+                                  {t('common:reject')}
+                                </Button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                )}
+
+                <Card className="overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[#1A1A24]">
+                        <h3 className="text-lg font-bold text-white">
+                            {t('organization:memberList')}
+                        </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-[#1A1A24]">
+                        <thead className="bg-[#0A0A0F]">
+                          <tr>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              {t('organization:memberTable.member')}
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              {t('organization:memberTable.role')}
+                            </th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              {t('organization:memberTable.status')}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-[#111118] divide-y divide-[#1A1A24]">
+                          {approvedMembers.map((member, idx) => (
+                            <tr key={idx} className="hover:bg-white/5 transition-colors">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="h-8 w-8 rounded-full bg-gradient-to-r from-red-400 to-red-500 flex items-center justify-center text-white font-bold text-xs">
+                                    {member.walletAddress.toLowerCase() === org.owner.toLowerCase() ? 'O' : 'M'}
+                                  </div>
+                                  <div className="ml-3">
+                                    <div className="text-sm font-mono text-gray-300">
+                                      {truncateAddress(member.walletAddress)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${member.walletAddress.toLowerCase() === org.owner.toLowerCase() ? 'bg-purple-500/20 text-purple-400' : 'bg-[#1A1A24] text-gray-300'}`}>
+                                  {member.walletAddress.toLowerCase() === org.owner.toLowerCase() ? t('common:owner') : t('common:voter')}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-500/20 text-green-400">
+                                  {t('common:active')}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+            </div>
             }
 
             {activeTab === 'settings' && isOwner &&

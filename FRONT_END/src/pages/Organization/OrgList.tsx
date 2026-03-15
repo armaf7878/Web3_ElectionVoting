@@ -2,37 +2,107 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { SearchIcon, PlusIcon, FilterIcon, BuildingIcon } from 'lucide-react';
+import { SearchIcon, PlusIcon, BuildingIcon } from 'lucide-react';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { OrgCard } from '../../components/organization/OrgCard';
-import { MOCK_ORGS } from '../../utils/constants';
 import { toast } from 'sonner';
+import { api } from '../../api';
+import { useAuth } from '../../hooks/useAuth';
+
+interface Organization {
+  _id: string;
+  name: string;
+  description: string;
+  code: string;
+  owner: string;
+  members: Array<{
+    walletAddress: string;
+    status: 'pending' | 'approved' | 'rejected';
+  }>;
+}
+
 export function OrgList() {
   const { t } = useTranslation(['organization', 'common']);
+  const { user } = useAuth();
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'joined' | 'owned'>('all');
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
-  const filteredOrgs = MOCK_ORGS.filter((org) => {
+
+  const fetchOrganizations = async () => {
+    setIsLoading(true);
+    try {
+      let endpoint = '/organizations/all';
+      if (filter === 'joined') endpoint = '/organizations/joined';
+      if (filter === 'owned') endpoint = '/organizations/my';
+
+      const response = await api.get(endpoint);
+      setOrganizations(response.data);
+    } catch (error: any) {
+      console.error('Failed to fetch organizations:', error);
+      toast.error(t('common:errorOccurred'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchOrganizations();
+  }, [filter]);
+
+  const filteredOrgs = organizations.filter((org) => {
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-    org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    org.description.toLowerCase().includes(searchTerm.toLowerCase());
-    if (filter === 'joined') return matchesSearch && org.joined;
-    if (filter === 'owned')
-    return matchesSearch && org.owner === '0x7a3B...4f2E';
+      org.name.toLowerCase().includes(term) ||
+      (org.description && org.description.toLowerCase().includes(term));
+    
     return matchesSearch;
   });
+
+  const isUserMember = (org: Organization) => {
+    if (!user?.walletAddress) return false;
+    const userAddr = user.walletAddress.toLowerCase();
+    
+    // check if owner
+    if (org.owner.toLowerCase() === userAddr) return true;
+    
+    // check if approved member
+    return org.members.some(m => 
+        m.walletAddress.toLowerCase() === userAddr && m.status === 'approved'
+    );
+  };
+
+  const isUserPending = (org: Organization) => {
+    if (!user?.walletAddress) return false;
+    const userAddr = user.walletAddress.toLowerCase();
+    return org.members.some(m => 
+        m.walletAddress.toLowerCase() === userAddr && m.status === 'pending'
+    );
+  };
+
   const handleJoin = async () => {
-    if (!joinCode) return;
+    if (!joinCode || !user?.walletAddress) return;
     setIsJoining(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsJoining(false);
-    setIsJoinModalOpen(false);
-    toast.success(t('organization:joinSuccess'));
-    setJoinCode('');
+    try {
+      await api.post('/organizations/organizations/join', {
+        code: joinCode,
+        walletAddress: user.walletAddress
+      });
+      toast.success(t('organization:joinSuccess'));
+      setIsJoinModalOpen(false);
+      setJoinCode('');
+      // Refresh list if filter is "all" or "joined"
+      fetchOrganizations();
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || t('common:errorOccurred'));
+    } finally {
+      setIsJoining(false);
+    }
   };
   return (
     <div className="space-y-8 font-genos">
@@ -93,12 +163,17 @@ export function OrgList() {
       </div>
 
       {/* Grid */}
-      {filteredOrgs.length > 0 ?
+      {isLoading ? (
+        <div className="text-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading organizations...</p>
+        </div>
+      ) : filteredOrgs.length > 0 ?
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence>
             {filteredOrgs.map((org, index) =>
           <motion.div
-            key={org.id}
+            key={org._id}
             layout
             initial={{
               opacity: 0,
@@ -117,7 +192,22 @@ export function OrgList() {
               delay: index * 0.05
             }}>
             
-                <OrgCard org={org} onJoin={() => setIsJoinModalOpen(true)} />
+                <OrgCard 
+                    org={{
+                        id: org._id,
+                        name: org.name,
+                        description: org.description || '',
+                        memberCount: org.members.filter(m => m.status === 'approved').length,
+                        activeElections: 0, 
+                        owner: org.owner,
+                        joined: isUserMember(org),
+                        pending: isUserPending(org)
+                    }} 
+                    onJoin={() => {
+                        setJoinCode(org.code);
+                        setIsJoinModalOpen(true);
+                    }} 
+                />
               </motion.div>
           )}
           </AnimatePresence>

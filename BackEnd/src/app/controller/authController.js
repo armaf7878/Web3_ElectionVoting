@@ -97,6 +97,35 @@ class authController{
         }
 
     };
+
+    // UPDATE PROFILE
+    async updateProfile(req, res) {
+        try {
+            console.log(`[authController] updateProfile called for user ID: ${req.user.id}`);
+            const { name, email } = req.body;
+            console.log(`[authController] Data received: name="${name}", email="${email}"`);
+            
+            const updatedUser = await User.findByIdAndUpdate(
+                req.user.id,
+                { $set: { name, email } },
+                { new: true, runValidators: true }
+            );
+
+            if (!updatedUser) {
+                console.error(`[authController] User not found for ID: ${req.user.id}`);
+                return res.status(404).json({ error: "User not found" });
+            }
+
+            console.log(`[authController] User updated successfully: name="${updatedUser.name}", email="${updatedUser.email}"`);
+
+            res.json(updatedUser);
+        } catch (error) {
+            console.error(`[authController] Update error:`, error);
+            res.status(500).json({
+                error: error.message
+            });
+        }
+    }
 };
 module.exports= new authController();
 

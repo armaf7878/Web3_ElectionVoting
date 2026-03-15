@@ -6,6 +6,7 @@ import { BuildingIcon, InfoIcon } from 'lucide-react';
 import { OrgForm } from '../../components/organization/OrgForm';
 import { Card } from '../../components/common/Card';
 import { toast } from 'sonner';
+import { api } from '../../api';
 export function CreateOrg() {
   const { t } = useTranslation('organization');
   const navigate = useNavigate();
@@ -13,10 +14,13 @@ export function CreateOrg() {
   const handleSubmit = async (data: any) => {
     setIsCreating(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log('[CreateOrg] Gửi yêu cầu tạo tổ chức:', data);
+      const response = await api.post('/organizations/create_organizations', data);
+      console.log('[CreateOrg] Kết quả tạo tổ chức:', response.data);
       toast.success(t('createSuccess'));
       navigate('/organizations');
-    } catch (error) {
+    } catch (error: any) {
+      console.error('[CreateOrg] Lỗi tạo tổ chức:', error.response?.data || error.message);
       toast.error(t('createError'));
     } finally {
       setIsCreating(false);

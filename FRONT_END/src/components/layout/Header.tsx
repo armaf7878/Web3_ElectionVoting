@@ -39,7 +39,6 @@ export function Header() {
 
   const handleLogout = () => {
     logout();
-    disconnectWallet();
     setIsProfileDropdownOpen(false);
   };
   return (
