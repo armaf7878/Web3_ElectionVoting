@@ -169,22 +169,63 @@ class electionController{
                 await tx.wait();
 
                 election.candidates.push({
-                    id: user._id,
+                    user_id: user._id,
                     name: user.name
                 });
 
                 await election.save();
-
-                res.json({
-                    message:
-                    "Candidate added successfully"
-                });
-
             }
+
+            res.json({
+                message:"Candidate added successfully"
+            });
+
         } catch (error) {
             return res.status(500).json({error: error.message});
         }
     };
+
+    async addVoter(req, res){
+        try {
+            const{
+                electionID,
+                voters
+            } = req.body;
+
+            const election = await Election.findById(electionID);
+            
+            if(!election){
+                return res.status(404).json({error: "Election Not Found!"});
+            }
+            
+            const contract =  new ethers.Contract(
+                election.contractAddress,
+                abi,
+                wallet
+            );
+
+            for(const voter of voters){
+                const tx = await contract.addVoter(
+                    voter.walletAddress
+                );
+                
+                await tx.wait();
+
+                election.voters.push({
+                    voter_id: voter._id,
+                    name: voter.name,
+                });
+
+                await election.save();
+            }
+            res.json({
+                    message:"Voter added successfully"
+                });
+        } catch (error) {
+            return res.status(500).json({error: error.message});
+        }
+
+    }
 
 };
 module.exports = new electionController()
