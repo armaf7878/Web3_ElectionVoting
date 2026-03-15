@@ -5,6 +5,8 @@ const electionController = require('../app/controller/electionController');
 
 
 route.post("/create_election" , authMiddle, electionController.create);
-route.post("/:id", authMiddle, electionController.detail);
+route.post("/add_candidate", authMiddle, electionController.addCandidate);
+route.post("/organization_election/:id", authMiddle, electionController.AllElectionInOrganize);
+route.post("/detail_election/:id", authMiddle, electionController.DetailOrganization);
 
 module.exports = route

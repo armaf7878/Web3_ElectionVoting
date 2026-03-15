@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+
 const Election = new mongoose.Schema({
 
     name: {
@@ -40,6 +41,7 @@ const Election = new mongoose.Schema({
 
     candidates: [
         {
+            id: mongoose.Schema.Types.ObjectId,
             name: String
         }
     ],

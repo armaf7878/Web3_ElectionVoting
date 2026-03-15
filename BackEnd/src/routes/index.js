@@ -1,7 +1,7 @@
 const authRoute = require('./authRoute');
 const organizationRoute = require('./organizationRoute');
 const electionRoute = require('./electionRoute');
-// const candidateRoute = require('./candidateRoute');
+const candidateRoute = require('./candidateRoute');
 // const votersRoute = require('./votersRoute');
 // const voteRoute = require('./voteRoute');
 

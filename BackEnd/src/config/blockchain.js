@@ -1,4 +1,5 @@
 const { ethers } = require("ethers");
+const { NonceManager } = require("ethers");
 require("dotenv").config();
 
 const abi = require("../contract/abi.json");
@@ -13,6 +14,8 @@ const wallet = new ethers.Wallet(
     provider
 );
 
+const managedWallet = new NonceManager(wallet);
+
 const getContract = (address) => {
 
     return new ethers.Contract(
@@ -26,7 +29,7 @@ const getContract = (address) => {
 module.exports = {
 
     provider,
-    wallet,
+    wallet:managedWallet,
     abi: abi.abi,
     bytecode: bytecode.bytecode,
     getContract

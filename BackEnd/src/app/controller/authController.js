@@ -11,7 +11,7 @@ class authController{
 
             const { walletAddress } = req.body;
 
-            const message = `Sign this message to login:`;
+            const message = `Sign this message to login: ${walletAddress}`;
 
             res.json({ message });
 
