@@ -1,9 +1,0 @@
-
-{
-  "general": "Đã xảy ra lỗi",
-  "networkError": "Lỗi mạng. Vui lòng thử lại.",
-  "walletNotFound": "Không phát hiện ví. Vui lòng cài đặt MetaMask.",
-  "wrongNetwork": "Sai mạng. Vui lòng chuyển sang đúng mạng.",
-  "transactionFailed": "Giao dịch thất bại",
-  "unauthorized": "Truy cập trái phép"
-}

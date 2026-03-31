@@ -41,15 +41,17 @@ const Election = new mongoose.Schema({
 
     candidates: [
         {
-            user_id: mongoose.Schema.Types.ObjectId,
-            name: String
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true
         }
     ],
 
     voters: [
         {
-            user_id: mongoose.Schema.Types.ObjectId,
-            name: String
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true
         }
     ],
 

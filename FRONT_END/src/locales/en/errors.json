@@ -1,9 +1,0 @@
-
-{
-  "general": "Something went wrong",
-  "networkError": "Network error. Please try again.",
-  "walletNotFound": "No wallet detected. Please install MetaMask.",
-  "wrongNetwork": "Wrong network. Please switch to the correct network.",
-  "transactionFailed": "Transaction failed",
-  "unauthorized": "Unauthorized access"
-}

@@ -1,4 +1,5 @@
 const Organization = require("../model/organization");
+const User = require("../model/user");
 const crypto = require("crypto");
 
 class organController {
@@ -7,7 +8,7 @@ class organController {
     async createOrganization(req, res) {
         try {
             const { name, description, memberLimit, approvalType } = req.body;
-            const owner = req.user.walletAddress;
+            const owner = req.user.id;
             console.log(`[organController] Creating organization: ${name} for owner: ${owner}`);
             
             const code = crypto
@@ -23,7 +24,7 @@ class organController {
                 code,
                 members: [
                     {
-                        walletAddress: owner,
+                        user_id: owner,
                         status: "approved"
                     }
                 ]
@@ -45,7 +46,10 @@ class organController {
             const { code } = req.body;
             // Lấy walletAddress từ JWT (không tin req.body)
             const walletAddress = req.user.walletAddress.toLowerCase();
-
+            const user = await User.findOne({ walletAddress });
+            if (!user) {
+                return res.status(404).json({ error: "User not found" });
+            }
             const organization = await Organization.findOne({ code });
 
             if (!organization) {
@@ -62,7 +66,7 @@ class organController {
                 _id: organization._id,
                 members: {
                     $elemMatch: {
-                        walletAddress: walletAddress
+                        user_id: req.user.id
                     }
                 }
             });
@@ -74,7 +78,7 @@ class organController {
             }
 
             organization.members.push({
-                walletAddress,
+                user_id: req.user.id,
                 status: "pending"
             });
 
@@ -95,7 +99,7 @@ class organController {
 
             const {
                 organizationId,
-                walletAddress
+                member_id
             } = req.body;
 
             const organization =
@@ -103,13 +107,21 @@ class organController {
                     organizationId
                 );
 
+            if (req.user.id != organization.owner) {
+                return res
+                    .status(403)
+                    .json({
+                        error:
+                            "Only the owner can approve members"
+                    });
+            }
+
             const member =
                 organization.members.find(
-                    m =>
-                        m.walletAddress ===
-                        walletAddress
+                    m =>m.user_id.toString() === member_id
                 );
 
+                   
             if (!member) {
 
                 return res
@@ -147,19 +159,27 @@ class organController {
 
             const {
                 organizationId,
-                walletAddress
+                member_id
             } = req.body;
 
             const organization =
                 await Organization.findById(
                     organizationId
                 );
+            console.log(`[organController] Rejecting member: ${member_id} from organization: ${organization.owner}`);
+            if (req.user.id != organization.owner) {
+                return res
+                    .status(403)
+                    .json({
+                        error:
+                            "Only the owner can reject members"
+                    });
+            }
 
             const member =
                 organization.members.find(
                     m =>
-                        m.walletAddress ===
-                        walletAddress
+                        m.user_id.toString() === member_id  
                 );
 
             if (!member) {
@@ -198,7 +218,7 @@ class organController {
             const { id } = req.params;
 
             const organization =
-                await Organization.findById(id);
+                await Organization.findById(id).populate("members.user_id", "walletAddress name");
 
             if (!organization) {
 
@@ -240,12 +260,12 @@ class organController {
     // GET MY ORGANIZATIONS
     async getMyOrganizations(req, res) {
         try {
-            const walletAddress = req.user.walletAddress;
-            console.log(`[organController] Getting organizations for user: ${walletAddress}`);
+            const owner_id = req.user.id;
+            console.log(`[organController] Getting organizations for user: ${owner_id}`);
             const organizations = await Organization.find({
                 $or: [
-                    { owner: walletAddress },
-                    { "members.walletAddress": walletAddress }
+                    { owner: owner_id },
+                    { "members.user_id": owner_id }
                 ]
             });
             res.json(organizations);
@@ -276,6 +296,7 @@ class organController {
         }
     }
 
+ 
 }
 
 module.exports = new organController();

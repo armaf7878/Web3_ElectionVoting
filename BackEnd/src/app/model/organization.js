@@ -4,7 +4,8 @@ const Organization = new mongoose.Schema({
 
     name: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
 
     owner: {
@@ -33,8 +34,13 @@ const Organization = new mongoose.Schema({
     },
 
     members: [
-        {
-            walletAddress: String,
+        {   
+            user_id:{
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",  
+                required: true      
+            },
+        
             status: {
                 type: String,
                 enum: ["pending", "approved", "rejected"],

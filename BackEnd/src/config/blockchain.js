@@ -26,12 +26,22 @@ const getContract = (address) => {
 
 };
 
+const getWalletAddress = (address) => {
+    const wallet_1 = new ethers.Wallet(
+        address,
+        provider
+    );
+
+    const managedWallet_1 = new NonceManager(wallet_1);
+    return managedWallet_1;
+}
+
 module.exports = {
 
     provider,
     wallet:managedWallet,
     abi: abi.abi,
     bytecode: bytecode.bytecode,
-    getContract
-
+    getContract,
+    getWalletAddress
 };
